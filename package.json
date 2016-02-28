@@ -29,9 +29,6 @@
     "mocha": "^2.2.5",
     "underscore": "^1.8.3"
   },
-  "dependencies": {
-    "q": "^1.4.1"
-  },
   "directories": {
     "test": "test"
   },
