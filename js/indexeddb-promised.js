@@ -201,7 +201,7 @@ ObjectStore.prototype.delete = function(key) {
     var operationError;
 
     return new Promise(function(resolve, reject) {
-        this.db.then(function(db) {
+        self.db.then(function(db) {
             return db.transaction(self.storeName, 'readwrite');
         })
         .then(function(transaction) {
@@ -252,8 +252,6 @@ ObjectStore.prototype.clear = function() {
             request.onerror = function(event) {
                 operationError = event.target.errorCode;
             };
-
-            return deferTransaction.promise;
         });
     });
 };
@@ -334,7 +332,6 @@ ObjectStore.prototype.getAll = function() {
 
 ObjectStore.prototype.getAllKeys = function() {
     var self = this;
-    var deferTransaction = Q.defer();
     var result = [];
     var operationError;
 
@@ -397,7 +394,13 @@ ObjectStore.prototype.openProgressiveCursor = function(idbKeyRange, direction) {
             countRequest.onsuccess = function() {
                 defers.length = countRequest.result;
                 for(var i=0;i < defers.length;i++) {
-                    defers[i] = Q.defer();
+                    let defer = {};
+                    defer.promise = new Promise((resolve, reject) => {
+                        defer.resolve = resolve;
+                        defer.reject = reject;
+                    });
+                    defers[i] = defer;
+                        
                 }
                 resolve(defers);
             };
@@ -529,36 +532,36 @@ Indexeddb.prototype.execTransaction = function(
 ) {
 
     return this.db.then(function(db) {
-        var queue = db;
+        var queue = Promise.resolve([]);
         var tx = db.transaction(objectStores, mode);
-        var resultsAccumulator = [];
 
         operations.forEach(function(operation) {
-            queue = queue.then(new Promise(function(resolve, reject) {
-                var request = operation(tx);
+            queue = queue.then((resultsAccumulator) => {
+                resultsAccumulator.push(new Promise((resolve, reject) => {
+                    var request = operation(tx);
 
-                if(!request) {
-                    resultsAccumulator.push(null);
-                    resolve();
-                } else if('onsuccess' in request && 'onerror' in request) {
-                    request.onsuccess = function(event) {
-                        resultsAccumulator.push(event.target.result);
-                        resolve();
-                    };
-                    request.oncomplete = function(event) {
-                        resultsAccumulator.push(event.target.result);
-                        resolve();
-                    };
-                    request.onerror = function(event) {
-                        reject(new Error(event.target.errorCode || null));
-                    };
-                } else {
-                    resolve(request);
-                }
-            }));
+                    if(!request) {
+                        resolve(null);
+                    } else if('onsuccess' in request && 'onerror' in request) {
+                        request.onsuccess = function(event) {
+                            resolve(event.target.result);
+                        };
+                        request.oncomplete = function(event) {
+                            resolve(event.target.result);
+                        };
+                        request.onerror = function(event) {
+                            reject(new Error(event.target.errorCode || null));
+                        };
+                    } else {
+                        resolve(request);
+                    }
+                }));
+
+                return resultsAccumulator;
+            });
         });
 
-        return queue.then(() => { return resultsAccumulator; });
-    });
+        return queue;
+    }).then((accumulator) => Promise.all(accumulator));
 
 };

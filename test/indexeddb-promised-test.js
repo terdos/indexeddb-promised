@@ -1,9 +1,10 @@
+/* jshint esnext:true */
+
 var chai = require("chai");
 var should = chai.should();
 var expect = chai.expect;
 chai.use(require('chai-fuzzy'));
 var Builder = require("../js/indexeddb-promised");
-var Q = require('q');
 var _ = require('lodash');
 
 var testCount = 1;
@@ -16,27 +17,23 @@ describe('indexeddb-promised', function() {
   var indexeddb;
 
   before('Get latest testdb version', function() {
-    var defer = Q.defer();
-
-    indexedDB.webkitGetDatabaseNames().onsuccess = function(event) {
-      var databases = event.target.result;
-      var max = 0;
-      for(var i=0;i < databases.length;i++) {
-        var databaseName = databases[i];
-        var dbNumber = databaseName.replace(/^testdb/, '');
-        dbNumber = parseInt(dbNumber, 10);
-        if(dbNumber > max) {
-          max = dbNumber;
+    indexedDB.databases()
+      .then((databases) => {
+        var max = 0;
+        for(var i=0;i < databases.length;i++) {
+          var databaseName = databases[i].name;
+          var dbNumber = databaseName.replace(/^testdb/, '');
+          dbNumber = parseInt(dbNumber, 10);
+          if(dbNumber > max) {
+            max = dbNumber;
+          }
         }
-      }
 
-      defer.resolve(max);
-    };
-
-    return defer.promise
-    .then(function(max) {
-      testCount = max + 1;
-    });
+        return max;
+      })
+      .then(function(max) {
+        testCount = max + 1;
+      });
   });
 
   var createDbWithTestObjStore = function() {
@@ -57,7 +54,7 @@ describe('indexeddb-promised', function() {
 
   afterEach('increasing test count', function() {
     testCount++;
-    return Q(null);
+    return Promise.resolve(null);
   });
 
   describe('#constructor', function() {
@@ -74,7 +71,7 @@ describe('indexeddb-promised', function() {
 
       return indexeddb.getDb()
       .then(hasObjectStore)
-      .thenResolve("COMPLETED Create DB test.")
+      .then(() => "COMPLETED Create DB test.")
       .then(log);
     });
 
@@ -87,7 +84,7 @@ describe('indexeddb-promised', function() {
       };
 
       return db.then(hasTestObjStore)
-      .thenResolve("COMPLETED Create ObjectStore test.")
+      .then(() => "COMPLETED Create ObjectStore test.")
       .then(log);
     });
 
@@ -104,7 +101,7 @@ describe('indexeddb-promised', function() {
       };
 
       return db.then(hasTestObjStore)
-      .thenResolve("COMPLETED Create ObjectStore with autoIncrement key without upgrade function test.")
+      .then(() => "COMPLETED Create ObjectStore with autoIncrement key without upgrade function test.")
       .then(log);
     });
 
@@ -126,7 +123,7 @@ describe('indexeddb-promised', function() {
       };
 
       return db.then(hasTestObjStore)
-      .thenResolve("COMPLETED Create ObjectStore with keyPath key without upgrade function test.")
+      .then(() => "COMPLETED Create ObjectStore with keyPath key without upgrade function test.")
       .then(log);
     });
   });
@@ -175,8 +172,9 @@ describe('indexeddb-promised', function() {
       var transactions = [addRecord, getRecord, deleteRecord];
       return indexeddb.execTransaction(transactions,
         ['testObjStore'], "readwrite")
-      .tap(function(results) {
+      .then(function(results) {
         log(JSON.stringify(results));
+        return results;
       })
       .then(function(results) {
         results.should.have.length(transactions.length);
@@ -184,7 +182,7 @@ describe('indexeddb-promised', function() {
 
         results[1][0].should.eql({key: 1, value: {testKey: "testValue"}});
       })
-      .thenResolve("COMPLETED Execute transaction test.")
+      .then(() => "COMPLETED Execute transaction test.")
       .then(log);
     });
   });
@@ -204,7 +202,7 @@ describe('indexeddb-promised', function() {
 
       return indexeddb.testObjStore.add(testRecord)
       .then(test)
-      .thenResolve("COMPLETED add test.")
+      .then(() => "COMPLETED add test.")
       .then(log);
     });
 
@@ -217,8 +215,6 @@ describe('indexeddb-promised', function() {
 
       var test1 = function() {
         return indexeddb2.testObjStore.getAll()
-        .tap(function(result) {
-        })
         .then(function(result) {
           result.should.have.length(5);
           for(var i=1;i <= 5;i++) {
@@ -234,7 +230,7 @@ describe('indexeddb-promised', function() {
           getPromises.push(indexeddb2.testObjStore.get('id'+i));
         }
 
-        return Q.all(getPromises)
+        return Promise.all(getPromises)
         .then(function(result) {
           for(var i=1;i <= 5;i++) {
             result.should.containOneLike({testKey: "testValue" + i});
@@ -249,10 +245,10 @@ describe('indexeddb-promised', function() {
         );
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test1)
       .then(test2)
-      .thenResolve("COMPLETED add a record in the db using an out of line key test.")
+      .then(() => "COMPLETED add a record in the db using an out of line key test.")
       .then(log);
     });
 
@@ -269,13 +265,13 @@ describe('indexeddb-promised', function() {
       var testRecord = {id: 1, testKey: "testValue"};
 
       return indexeddb2.testObjStore.add(testRecord)
-      .thenResolve(indexeddb2.testObjStore.add(testRecord))
+      .then(() => indexeddb2.testObjStore.add(testRecord))
       .then(function() {
         throw new Error("Test failed: add should have rejected.");
       }, function(error) {
         log('Test succeeded: caught exception with errorCode: ' + error.message);
       })
-      .thenResolve("COMPLETED reject the promise when failure while adding test.")
+      .then(() => "COMPLETED reject the promise when failure while adding test.")
       .then(log);
     });
 
@@ -295,9 +291,9 @@ describe('indexeddb-promised', function() {
         });
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve('COMPLETED retrieve the count of records in the db test')
+      .then(() => 'COMPLETED retrieve the count of records in the db test')
       .then(log);
     });
 
@@ -326,7 +322,7 @@ describe('indexeddb-promised', function() {
       .then(testAdded)
       .then(deleteRecord)
       .then(testDeleted)
-      .thenResolve("COMPLETED delete test.")
+      .then(() => "COMPLETED delete test.")
       .then(log);
     });
 
@@ -345,17 +341,17 @@ describe('indexeddb-promised', function() {
           log('Before clear, count is: ' + count);
           count.should.equal(numberOfRecords);
         })
-        .thenResolve(indexeddb.testObjStore.clear())
-        .thenResolve(indexeddb.testObjStore.count())
+        .then(() => indexeddb.testObjStore.clear())
+        .then(() => indexeddb.testObjStore.count())
         .then(function(count) {
           log('After clear, count is: ' + count);
           count.should.equal(0);
         });
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve('COMPLETED clear all the objects in an object store test')
+      .then(() => 'COMPLETED clear all the objects in an object store test')
       .then(log);
     });
 
@@ -385,7 +381,7 @@ describe('indexeddb-promised', function() {
       .then(testAdded)
       .then(updateRecord)
       .then(testUpdated)
-      .thenResolve("COMPLETED update test.")
+      .then(() => "COMPLETED update test.")
       .then(log);
     });
 
@@ -419,7 +415,7 @@ describe('indexeddb-promised', function() {
       .then(testAdded)
       .then(updateRecord)
       .then(testUpdated)
-      .thenResolve("COMPLETED update using keyPath test.")
+      .then(() => "COMPLETED update using keyPath test.")
       .then(log);
     });
 
@@ -432,8 +428,9 @@ describe('indexeddb-promised', function() {
 
       var test = function() {
         return indexeddb2.testObjStore.getAll()
-        .tap(function(result) {
+        .then(function(result) {
           log('getAll(): ' + JSON.stringify(result));
+          return result;
         })
         .then(function(result) {
           result.should.have.length(5);
@@ -450,9 +447,9 @@ describe('indexeddb-promised', function() {
         );
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve("COMPLETED get all records in the database test.")
+      .then(() => "COMPLETED get all records in the database test.")
       .then(log);
     });
 
@@ -465,8 +462,9 @@ describe('indexeddb-promised', function() {
 
       var test = function() {
         return indexeddb2.testObjStore.getAllKeys()
-        .tap(function(result) {
+        .then(function(result) {
           log('getAllKeys(): ' + JSON.stringify(result));
+          return result;
         })
         .then(function(result) {
           result.should.have.length(5);
@@ -483,9 +481,9 @@ describe('indexeddb-promised', function() {
         );
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve("COMPLETED get all keys in the database test.")
+      .then(() => "COMPLETED get all keys in the database test.")
       .then(log);
     });
 
@@ -515,8 +513,9 @@ describe('indexeddb-promised', function() {
 
       var test = function() {
         return indexeddb2.testObjStoreByTestKey.get('testValue3')
-        .tap(function(result) {
+        .then(function(result) {
           log('found: '+JSON.stringify(result));
+          return result;
         })
         .then(function(result) {
           result.should.eql({id: 3, testKey: "testValue3"});
@@ -530,9 +529,9 @@ describe('indexeddb-promised', function() {
         );
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve("COMPLETED create and use index test.")
+      .then(() => "COMPLETED create and use index test.")
       .then(log);
     });
   });
@@ -555,8 +554,8 @@ describe('indexeddb-promised', function() {
             results.push(record);
           }
 
-          var keys = _.pluck(results, 'key');
-          var values = _.pluck(results, 'value');
+          var keys = results.map((e) => e.key);
+          var values = results.map((e) => e.value);
 
           keys.should.eql([1, 2, 3, 4, 5]);
           values.should.eql(
@@ -568,9 +567,9 @@ describe('indexeddb-promised', function() {
         });
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve("COMPLETED create and use cursor test.")
+      .then(() => "COMPLETED create and use cursor test.")
       .then(log);
     });
 
@@ -593,8 +592,8 @@ describe('indexeddb-promised', function() {
             results.push(record);
           }
 
-          var keys = _.pluck(results, 'key');
-          var values = _.pluck(results, 'value');
+          var keys = results.map((e) => e.key);
+          var values = results.map((e) => e.value);
 
           keys.should.eql([2, 3, 4]);
           values.should.eql(
@@ -605,9 +604,9 @@ describe('indexeddb-promised', function() {
         });
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve("COMPLETED create a cursor and iterate values 2 through 4.")
+      .then(() => "COMPLETED create a cursor and iterate values 2 through 4.")
       .then(log);
     });
 
@@ -628,8 +627,8 @@ describe('indexeddb-promised', function() {
             results.push(record);
           }
 
-          var keys = _.pluck(results, 'key');
-          var values = _.pluck(results, 'value');
+          var keys = results.map((e) => e.key);
+          var values = results.map((e) => e.value);
 
           keys.should.eql([5, 4, 3, 2, 1]);
           values.should.eql(
@@ -641,9 +640,9 @@ describe('indexeddb-promised', function() {
         });
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve("COMPLETED create a cursor and iterate the object store in reverse order test.")
+      .then(() => "COMPLETED create a cursor and iterate the object store in reverse order test.")
       .then(log);
     });
 
@@ -672,9 +671,9 @@ describe('indexeddb-promised', function() {
             });
           }
 
-          return Q.all(promises).then(function() {
-            var keys = _.pluck(results, 'key');
-            var values = _.pluck(results, 'value');
+          return Promise.all(promises).then(function() {
+            var keys = results.map((e) => e.key);
+            var values = results.map((e) => e.value);
 
             keys.should.eql([6, 5, 4, 3, 2, 1]);
             values.should.eql(
@@ -689,9 +688,9 @@ describe('indexeddb-promised', function() {
         });
       }
 
-      return Q.all(addPromises)
+      return Promise.all(addPromises)
       .then(test)
-      .thenResolve("COMPLETED create and use cursor and retrieve data while it becomes available test.")
+      .then(() => "COMPLETED create and use cursor and retrieve data while it becomes available test.")
       .then(log);
     });
 

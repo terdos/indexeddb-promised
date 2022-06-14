@@ -1,6 +1,6 @@
 {
   "name": "indexeddb-promised",
-  "version": "1.3.1",
+  "version": "2.0.0",
   "description": "Library for indexeddb that uses promises.",
   "main": "js/indexeddb-promised.js",
   "scripts": {
@@ -11,23 +11,27 @@
     "promises",
     "angularjs"
   ],
-  "author": "Cristobal Vergara Niedermayr <cristobal.vergara.niedermayr@gmail.com>",
-  "license": "MIT",
+  "contributors": [
+    "Cristobal Vergara Niedermayr <cristobal.vergara.niedermayr@gmail.com>"
+  ],
+  "license": "Apache-2.0",
   "devDependencies": {
-    "chai": "^2.3.0",
-    "chai-fuzzy": "^1.5.0",
+    "chai": "^4.3.6",
+    "chai-fuzzy": "^1.6.1",
     "chai-things": "^0.2.0",
-    "gulp": "^3.8.11",
-    "karma": "^0.12.33",
-    "karma-browserify": "^4.2.1",
-    "karma-chrome-launcher": "^0.1.12",
-    "karma-firefox-launcher": "^0.1.6",
-    "karma-jshint-preprocessor": "0.0.5",
-    "karma-mocha": "^0.1.10",
-    "karma-spec-reporter": "0.0.19",
-    "lodash": "^3.9.3",
-    "mocha": "^2.2.5",
-    "underscore": "^1.8.3"
+    "gulp": "^4.0.2",
+    "karma": "^6.4.0",
+    "karma-browserify": "^8.1.0",
+    "karma-chrome-launcher": "^3.1.1",
+    "karma-firefox-launcher": "^2.1.2",
+    "karma-jshint-preprocessor": "0.0.6",
+    "karma-mocha": "^2.0.1",
+    "karma-spec-reporter": "0.0.34",
+    "lodash": "^4.17.21",
+    "mocha": "^10.0.0",
+    "underscore": "^1.13.4",
+    "watchify": "^4.0.0",
+    "browserify": "^17.0.0"
   },
   "directories": {
     "test": "test"
@@ -39,5 +43,6 @@
   "bugs": {
     "url": "https://github.com/vergara/indexeddb-promised/issues"
   },
-  "homepage": "https://github.com/vergara/indexeddb-promised"
+  "homepage": "https://github.com/vergara/indexeddb-promised",
+  "dependencies": {}
 }
